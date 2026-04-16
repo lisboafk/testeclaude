@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PNCP Filtros Avançados</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      width: 400px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 13px;
+      color: #333;
+      background: #f8f9fa;
+    }
+
+    .header {
+      background: #1351b4;
+      color: white;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .header h1 {
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .header .badge {
+      background: rgba(255,255,255,0.2);
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 10px;
+    }
+
+    .section {
+      padding: 12px 16px;
+      border-bottom: 1px solid #e0e0e0;
+      background: white;
+    }
+
+    .section-title {
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      color: #666;
+      margin-bottom: 8px;
+      letter-spacing: 0.5px;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      margin-bottom: 4px;
+      color: #555;
+    }
+
+    input[type="text"],
+    input[type="date"],
+    input[type="url"],
+    select {
+      width: 100%;
+      padding: 7px 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 13px;
+      margin-bottom: 8px;
+      background: white;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: #1351b4;
+      box-shadow: 0 0 0 2px rgba(19,81,180,0.15);
+    }
+
+    .row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .row > * {
+      flex: 1;
+    }
+
+    .keywords-area {
+      position: relative;
+    }
+
+    .keywords-area textarea {
+      width: 100%;
+      padding: 7px 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 13px;
+      margin-bottom: 4px;
+      resize: vertical;
+      min-height: 50px;
+      font-family: inherit;
+    }
+
+    .keywords-area textarea:focus {
+      outline: none;
+      border-color: #1351b4;
+      box-shadow: 0 0 0 2px rgba(19,81,180,0.15);
+    }
+
+    .hint {
+      font-size: 11px;
+      color: #888;
+      margin-bottom: 8px;
+    }
+
+    .operator-toggle {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 8px;
+    }
+
+    .operator-toggle button {
+      flex: 1;
+      padding: 5px 0;
+      border: 1px solid #ccc;
+      background: white;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 4px;
+      transition: all 0.15s;
+    }
+
+    .operator-toggle button.active {
+      background: #1351b4;
+      color: white;
+      border-color: #1351b4;
+    }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+
+    .checkbox-row input[type="checkbox"] {
+      margin: 0;
+    }
+
+    .checkbox-row label {
+      margin: 0;
+      font-weight: normal;
+      cursor: pointer;
+    }
+
+    .actions {
+      padding: 12px 16px;
+      background: white;
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 9px 12px;
+      border: none;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-primary {
+      background: #1351b4;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #0d3f8f;
+    }
+
+    .btn-secondary {
+      background: #e0e0e0;
+      color: #333;
+    }
+
+    .btn-secondary:hover {
+      background: #d0d0d0;
+    }
+
+    .status-bar {
+      padding: 8px 16px;
+      background: #f0f4f8;
+      font-size: 11px;
+      color: #666;
+      text-align: center;
+    }
+
+    .status-bar.success {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .status-bar.error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .config-toggle {
+      padding: 8px 16px;
+      background: #f8f9fa;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .config-toggle button {
+      background: none;
+      border: none;
+      color: #1351b4;
+      font-size: 12px;
+      cursor: pointer;
+      padding: 0;
+      text-decoration: underline;
+    }
+
+    .config-section {
+      display: none;
+    }
+
+    .config-section.visible {
+      display: block;
+    }
+
+    .uf-select {
+      margin-bottom: 8px;
+    }
+
+    .modalidade-checks {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 12px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>PNCP Filtros Avançados</h1>
+    <span class="badge">Proposta Pronta</span>
+  </div>
+
+  <!-- Palavras-chave -->
+  <div class="section">
+    <div class="section-title">Palavras-chave</div>
+    <div class="keywords-area">
+      <textarea id="keywords" placeholder="Ex: notebook, computador, desktop"></textarea>
+    </div>
+    <div class="hint">Separe termos por vírgula. Cada termo será buscado individualmente.</div>
+    <div class="operator-toggle">
+      <button id="op-and" class="active" data-op="AND">AND (todos os termos)</button>
+      <button id="op-or" data-op="OR">OR (qualquer termo)</button>
+    </div>
+  </div>
+
+  <!-- Filtros principais -->
+  <div class="section">
+    <div class="section-title">Filtros</div>
+
+    <div class="checkbox-row">
+      <input type="checkbox" id="excluirRegistroPreco">
+      <label for="excluirRegistroPreco">Excluir Registro de Preço (SRP)</label>
+    </div>
+
+    <label>Tipo de Objeto</label>
+    <select id="tipoObjeto">
+      <option value="">Todos</option>
+      <option value="1">Material/Compras</option>
+      <option value="2">Serviço</option>
+      <option value="3">Obra</option>
+    </select>
+
+    <label>Modalidade</label>
+    <select id="modalidade">
+      <option value="">Todas</option>
+      <option value="1">Leilão - Eletrônico</option>
+      <option value="2">Diálogo Competitivo</option>
+      <option value="3">Concurso</option>
+      <option value="4">Concorrência - Eletrônica</option>
+      <option value="5">Concorrência - Presencial</option>
+      <option value="6">Pregão - Eletrônico</option>
+      <option value="7">Pregão - Presencial</option>
+      <option value="8">Dispensa de Licitação</option>
+      <option value="9">Inexigibilidade</option>
+      <option value="10">Manifestação de Interesse</option>
+      <option value="11">Pré-qualificação</option>
+      <option value="12">Credenciamento</option>
+      <option value="13">Leilão - Presencial</option>
+    </select>
+
+    <label>UF</label>
+    <select id="uf" class="uf-select">
+      <option value="">Todas</option>
+      <option value="AC">AC</option><option value="AL">AL</option>
+      <option value="AM">AM</option><option value="AP">AP</option>
+      <option value="BA">BA</option><option value="CE">CE</option>
+      <option value="DF">DF</option><option value="ES">ES</option>
+      <option value="GO">GO</option><option value="MA">MA</option>
+      <option value="MG">MG</option><option value="MS">MS</option>
+      <option value="MT">MT</option><option value="PA">PA</option>
+      <option value="PB">PB</option><option value="PE">PE</option>
+      <option value="PI">PI</option><option value="PR">PR</option>
+      <option value="RJ">RJ</option><option value="RN">RN</option>
+      <option value="RO">RO</option><option value="RR">RR</option>
+      <option value="RS">RS</option><option value="SC">SC</option>
+      <option value="SE">SE</option><option value="SP">SP</option>
+      <option value="TO">TO</option>
+    </select>
+
+    <div class="row">
+      <div>
+        <label>Data publicação (de)</label>
+        <input type="date" id="dataInicial">
+      </div>
+      <div>
+        <label>Data publicação (até)</label>
+        <input type="date" id="dataFinal">
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label>Data disputa (de)</label>
+        <input type="date" id="dataDisputaInicial">
+      </div>
+      <div>
+        <label>Data disputa (até)</label>
+        <input type="date" id="dataDisputaFinal">
+      </div>
+    </div>
+  </div>
+
+  <!-- Configurações -->
+  <div class="config-toggle">
+    <button id="toggleConfig">Configurações do webhook</button>
+  </div>
+
+  <div class="section config-section" id="configSection">
+    <div class="section-title">Integração SaaS</div>
+    <label>URL do Webhook (Proposta Pronta)</label>
+    <input type="url" id="webhookUrl" placeholder="https://seu-saas.com/api/webhook">
+    <div class="hint">Os dados das oportunidades selecionadas serão enviados via POST para esta URL.</div>
+    <button class="btn btn-secondary" id="saveConfig" style="width: auto; margin-top: 4px;">Salvar configuração</button>
+  </div>
+
+  <!-- Ações -->
+  <div class="actions">
+    <button class="btn btn-primary" id="btnBuscar">Buscar no PNCP</button>
+    <button class="btn btn-secondary" id="btnLimpar">Limpar</button>
+  </div>
+
+  <div class="status-bar" id="statusBar">Pronto para buscar.</div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
