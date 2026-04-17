@@ -5,7 +5,8 @@
   "description": "Filtros avançados para o portal PNCP (pncp.gov.br) com integração ao Proposta Pronta.",
   "permissions": [
     "storage",
-    "activeTab"
+    "activeTab",
+    "tabs"
   ],
   "host_permissions": [
     "https://pncp.gov.br/*"
