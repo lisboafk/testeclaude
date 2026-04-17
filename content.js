@@ -4,8 +4,9 @@
   if (document.getElementById('pncp-ext-root')) return;
 
   const PNCP_API = 'https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao';
-  const PAGE_SIZE = 20;
+  const PAGE_SIZE = 50;
   const MAX_PAGES = 10;
+  const ALL_MODAL_CODES = ['1','2','3','4','5','6','7','8','9','10','11','12','13'];
 
   const state = {
     isOpen: false,
@@ -278,45 +279,53 @@
   }
 
   // ─── API fetch (paginated) ─────────────────────────────────────────────────
-  async function fetchAPI(f) {
+  function buildURL(f, modal, page) {
+    const url = new URL(PNCP_API);
+    url.searchParams.set('dataInicial', f.pubIni.replace(/-/g, ''));
+    url.searchParams.set('dataFinal',   f.pubFim.replace(/-/g, ''));
+    url.searchParams.set('pagina',      page);
+    url.searchParams.set('tamanhoPagina', PAGE_SIZE);
+    url.searchParams.set('codigoModalidadeContratacao', modal);
+    if (f.tipo)   url.searchParams.set('codigosTipoContratacao', f.tipo);
+    if (f.uf)     url.searchParams.set('uf', f.uf);
+    if (f.esfera) url.searchParams.set('codigoEsferaAdministrativa', f.esfera);
+    return url.toString();
+  }
+
+  async function fetchModalidade(f, modal, maxPages) {
     const all = [];
-    let page = 1;
-
-    while (page <= MAX_PAGES) {
-      const url = new URL(PNCP_API);
-      url.searchParams.set('dataInicial', f.pubIni.replace(/-/g, ''));
-      url.searchParams.set('dataFinal',   f.pubFim.replace(/-/g, ''));
-      url.searchParams.set('pagina',       page);
-      url.searchParams.set('tamanhoPagina', PAGE_SIZE);
-
-      if (f.tipo)   url.searchParams.set('codigosTipoContratacao', f.tipo);
-      if (f.modal)  url.searchParams.set('codigoModalidadeContratacao', f.modal);
-      if (f.uf)     url.searchParams.set('uf', f.uf);
-      if (f.esfera) url.searchParams.set('codigoEsferaAdministrativa', f.esfera);
-
-      showStatus(`Carregando p.${page}… (${all.length} registros até agora)`, 'loading');
-
-      const resp = await fetch(url.toString());
-
-      // 204 No Content or 404 = no more pages
+    for (let page = 1; page <= maxPages; page++) {
+      showStatus(`Modal ${modal} · p.${page}… (${all.length} até agora)`, 'loading');
+      const resp = await fetch(buildURL(f, modal, page));
       if (resp.status === 204 || resp.status === 404) break;
       if (!resp.ok) {
         let body = '';
         try { body = await resp.text(); } catch (_) {}
         throw new Error(`HTTP ${resp.status}${body ? ': ' + body : ''}`);
       }
-
       const data = await resp.json();
       const items = Array.isArray(data)
         ? data
         : (data.data ?? data.resultado ?? data.content ?? data.items ?? []);
-
       all.push(...items);
       if (items.length < PAGE_SIZE) break;
-      page++;
+    }
+    return all;
+  }
+
+  async function fetchAPI(f) {
+    if (f.modal) {
+      // Modalidade específica: pagina até MAX_PAGES
+      return fetchModalidade(f, f.modal, MAX_PAGES);
     }
 
-    return all;
+    // "Todas" selecionado: codigoModalidadeContratacao é obrigatório na API,
+    // então buscamos cada modalidade em paralelo (1 página por modalidade)
+    showStatus('Buscando em todas as modalidades…', 'loading');
+    const results = await Promise.allSettled(
+      ALL_MODAL_CODES.map(code => fetchModalidade(f, code, 1))
+    );
+    return results.flatMap(r => r.status === 'fulfilled' ? r.value : []);
   }
 
   // ─── Client-side filters ───────────────────────────────────────────────────
