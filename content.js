@@ -4,7 +4,7 @@
   if (document.getElementById('pncp-ext-root')) return;
 
   const PNCP_API = 'https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao';
-  const PAGE_SIZE = 50;
+  const PAGE_SIZE = 20;
   const MAX_PAGES = 10;
 
   const state = {
@@ -300,7 +300,11 @@
 
       // 204 No Content or 404 = no more pages
       if (resp.status === 204 || resp.status === 404) break;
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      if (!resp.ok) {
+        let body = '';
+        try { body = await resp.text(); } catch (_) {}
+        throw new Error(`HTTP ${resp.status}${body ? ': ' + body : ''}`);
+      }
 
       const data = await resp.json();
       const items = Array.isArray(data)
