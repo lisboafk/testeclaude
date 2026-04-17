@@ -1,34 +1,47 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const webhookInput  = document.getElementById('webhook-url');
-  const saveBtn       = document.getElementById('btn-save');
-  const saveStatus    = document.getElementById('save-status');
-  const secOnPncp     = document.getElementById('sec-on-pncp');
-  const secNotPncp    = document.getElementById('sec-not-pncp');
-  const openPanelBtn  = document.getElementById('btn-open-panel');
+  const webhookInput = document.getElementById('webhook-url');
+  const saveBtn      = document.getElementById('btn-save');
+  const saveStatus   = document.getElementById('save-status');
+  const secOnPncp    = document.getElementById('sec-on-pncp');
+  const secNotPncp   = document.getElementById('sec-not-pncp');
+  const openPanelBtn = document.getElementById('btn-open-panel');
 
-  // Load saved webhook URL
   chrome.storage.local.get('webhookUrl', ({ webhookUrl }) => {
     if (webhookUrl) webhookInput.value = webhookUrl;
   });
 
-  // Detect if current tab is on pncp.gov.br
   chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
     const onPncp = tab?.url?.includes('pncp.gov.br');
     secOnPncp.style.display  = onPncp ? 'block' : 'none';
     secNotPncp.style.display = onPncp ? 'none'  : 'block';
   });
 
-  // Open panel in content script
   openPanelBtn.addEventListener('click', () => {
     chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
-      if (tab) {
-        chrome.tabs.sendMessage(tab.id, { action: 'openPanel' });
-        window.close();
-      }
+      if (!tab) return;
+
+      // Try to send message. If content script isn't loaded yet, inject it first.
+      chrome.tabs.sendMessage(tab.id, { action: 'openPanel' }, (response) => {
+        if (chrome.runtime.lastError) {
+          // Content script not ready — inject it programmatically then retry
+          Promise.all([
+            chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] }),
+            chrome.scripting.insertCSS({ target: { tabId: tab.id }, files: ['styles.css'] }),
+          ]).then(() => {
+            setTimeout(() => {
+              chrome.tabs.sendMessage(tab.id, { action: 'openPanel' });
+            }, 300);
+          }).catch(() => {
+            // Last resort: just reload the tab on PNCP
+            chrome.tabs.reload(tab.id);
+          });
+        }
+      });
+
+      window.close();
     });
   });
 
-  // Save webhook URL
   saveBtn.addEventListener('click', () => {
     const url = webhookInput.value.trim();
     chrome.storage.local.set({ webhookUrl: url }, () => {

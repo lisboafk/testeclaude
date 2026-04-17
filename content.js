@@ -56,7 +56,7 @@
         </div>
 
         <div class="pncp-sec">
-          <div class="pncp-lbl">Período de Publicação <span class="pncp-req">*obrigatório</span></div>
+          <div class="pncp-lbl">Período de Publicação <span class="pncp-hint-inline">(ou preencha só a disputa)</span></div>
           <div class="pncp-r2">
             <div><label>De</label><input type="date" id="pncp-pub-ini"></div>
             <div><label>Até</label><input type="date" id="pncp-pub-fim"></div>
@@ -64,7 +64,7 @@
         </div>
 
         <div class="pncp-sec">
-          <div class="pncp-lbl">Data de Disputa <span class="pncp-hint-inline">(filtro local)</span></div>
+          <div class="pncp-lbl">Data da Disputa <span class="pncp-hint-inline">(Data fim de recebimento de propostas)</span></div>
           <div class="pncp-r2">
             <div><label>De</label><input type="date" id="pncp-disp-ini"></div>
             <div><label>Até</label><input type="date" id="pncp-disp-fim"></div>
@@ -79,10 +79,18 @@
         </div>
 
         <div class="pncp-sec">
+          <div class="pncp-lbl">Esfera Administrativa</div>
+          <select id="pncp-esfera">
+            <option value="">Todas</option>
+            <option value="F">Federal</option>
+            <option value="E">Estadual / DF</option>
+            <option value="M">Municipal</option>
+          </select>
+
           <div class="pncp-lbl">Tipo de Objeto</div>
           <select id="pncp-tipo">
             <option value="">Todos</option>
-            <option value="3">Compras / Material</option>
+            <option value="3">Material</option>
             <option value="2">Serviço</option>
             <option value="1">Obra</option>
             <option value="5">Outros</option>
@@ -162,6 +170,7 @@
     if (s.dispIni)  document.getElementById('pncp-disp-ini').value = s.dispIni;
     if (s.dispFim)  document.getElementById('pncp-disp-fim').value = s.dispFim;
     if (s.exclSRP)  document.getElementById('pncp-excl-srp').checked = true;
+    if (s.esfera)   document.getElementById('pncp-esfera').value = s.esfera;
     if (s.tipo)     document.getElementById('pncp-tipo').value = s.tipo;
     if (s.modal)    document.getElementById('pncp-modal').value = s.modal;
     if (s.uf)       document.getElementById('pncp-uf').value = s.uf;
@@ -213,6 +222,7 @@
       dispIni: document.getElementById('pncp-disp-ini').value,
       dispFim: document.getElementById('pncp-disp-fim').value,
       exclSRP: document.getElementById('pncp-excl-srp').checked,
+      esfera:  document.getElementById('pncp-esfera').value,
       tipo:    document.getElementById('pncp-tipo').value,
       modal:   document.getElementById('pncp-modal').value,
       uf:      document.getElementById('pncp-uf').value,
@@ -223,8 +233,16 @@
   async function doSearch() {
     const f = readFilters();
 
-    if (!f.pubIni || !f.pubFim) {
-      showStatus('Preencha as datas de publicação (obrigatórias).', 'error');
+    // Se só tem data de disputa, usa range de publicação amplo (365 dias)
+    if (!f.pubIni && !f.pubFim) {
+      if (!f.dispIni && !f.dispFim) {
+        showStatus('Preencha pelo menos um período (publicação ou disputa).', 'error');
+        return;
+      }
+      f.pubIni = daysAgoStr(365);
+      f.pubFim = todayStr();
+    } else if (!f.pubIni || !f.pubFim) {
+      showStatus('Preencha as duas datas de publicação (início e fim).', 'error');
       return;
     }
 
@@ -271,9 +289,10 @@
       url.searchParams.set('pagina',       page);
       url.searchParams.set('tamanhoPagina', PAGE_SIZE);
 
-      if (f.tipo)  url.searchParams.set('codigosTipoContratacao', f.tipo);
-      if (f.modal) url.searchParams.set('codigoModalidadeContratacao', f.modal);
-      if (f.uf)    url.searchParams.set('uf', f.uf);
+      if (f.tipo)   url.searchParams.set('codigosTipoContratacao', f.tipo);
+      if (f.modal)  url.searchParams.set('codigoModalidadeContratacao', f.modal);
+      if (f.uf)     url.searchParams.set('uf', f.uf);
+      if (f.esfera) url.searchParams.set('codigoEsferaAdministrativa', f.esfera);
 
       showStatus(`Carregando p.${page}… (${all.length} registros até agora)`, 'loading');
 
@@ -321,14 +340,26 @@
       );
     }
 
-    // Dispute date
+    // Dispute date (client-side — Data fim de recebimento de propostas)
     if (f.dispIni || f.dispFim) {
       res = res.filter(item => {
-        const dt = (item.dataAberturaProposta || item.dataEncerramentoProposta || '').substring(0, 10);
+        const dt = (item.dataEncerramentoProposta || item.dataAberturaProposta || '').substring(0, 10);
         if (!dt) return false;
         if (f.dispIni && dt < f.dispIni) return false;
         if (f.dispFim && dt > f.dispFim) return false;
         return true;
+      });
+    }
+
+    // Esfera (client-side fallback in case the API param isn't supported)
+    if (f.esfera) {
+      res = res.filter(item => {
+        const esfera =
+          item.orgaoEntidade?.esferaAdministrativa ||
+          item.esferaAdministrativa ||
+          item.orgaoEntidade?.esfera ||
+          '';
+        return esfera.toUpperCase().startsWith(f.esfera);
       });
     }
 
@@ -460,6 +491,7 @@
   function clearFilters() {
     document.getElementById('pncp-kw').value      = '';
     document.getElementById('pncp-excl-srp').checked = false;
+    document.getElementById('pncp-esfera').value  = '';
     document.getElementById('pncp-tipo').value    = '';
     document.getElementById('pncp-modal').value   = '';
     document.getElementById('pncp-uf').value      = '';
