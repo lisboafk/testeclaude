@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!tab) return;
 
       // Try to send message. If content script isn't loaded yet, inject it first.
-      chrome.tabs.sendMessage(tab.id, { action: 'openPanel' }, (response) => {
+      chrome.tabs.sendMessage(tab.id, { action: 'openPanel' }, () => {
         if (chrome.runtime.lastError) {
           // Content script not ready — inject it programmatically then retry
           Promise.all([
@@ -30,15 +30,17 @@ document.addEventListener('DOMContentLoaded', () => {
           ]).then(() => {
             setTimeout(() => {
               chrome.tabs.sendMessage(tab.id, { action: 'openPanel' });
+              window.close();
             }, 300);
           }).catch(() => {
             // Last resort: just reload the tab on PNCP
             chrome.tabs.reload(tab.id);
+            window.close();
           });
+        } else {
+          window.close();
         }
       });
-
-      window.close();
     });
   });
 
